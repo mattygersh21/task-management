@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend: Spring Boot (local)",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.ftinoco.task.management.TaskManagementApplication",
+      "cwd": "${workspaceFolder}/backend",
+      "args": "--spring.profiles.active=local",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Frontend: Chrome (running dev server)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4200/",
+      "webRoot": "${workspaceFolder}/frontend"
+    }
+  ]
+}
