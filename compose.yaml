@@ -1,0 +1,25 @@
+name: ftinoco-task
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      # Matches the repository's local development credentials.
+      POSTGRES_PASSWORD: Admin@2024
+    ports:
+      - '127.0.0.1:5434:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/001-schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
