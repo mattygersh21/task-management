@@ -12,6 +12,34 @@ Read, Update, Delete) for tasks. Tasks will include a title, description, due da
 
 ## Database
 
+### Local PostgreSQL container
+
+From the repository root, start the dedicated database:
+
+```bash
+docker compose up -d --wait
+```
+
+Connect at `127.0.0.1:5434`, database `postgres`, user `postgres`, password
+`Admin@2024` (local practice credentials only). Port 5434 avoids the existing
+job-search database on host port 5432. PostgreSQL uses the official
+`postgres:17-alpine` image; no host PostgreSQL installation is required.
+
+The first startup creates the table and sequence shown below using
+`docker/postgres/001-schema.sql`. Data persists in the `ftinoco-task_postgres-data`
+Docker volume. Initialization SQL runs only when that volume is empty.
+
+To run the backend on the host against this container:
+
+```bash
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+The `local` profile changes only the database connection URL. The original
+default configuration remains available. Stop the database from the repository
+root with `docker compose down`; this preserves its data volume.
+
 The database was create on PostgreSQL, here is the required DDL:
 
 ``` SQL
