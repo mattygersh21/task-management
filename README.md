@@ -70,6 +70,56 @@ CREATE SEQUENCE public.seq_task_id
 The endpoints were developed with Java/ Spring Boot, this is the file with the API test requests: [Postman Collection](./docs/Java%20-%20Task%20Management.postman_collection.json)
 
 ## UI
+
+Start the frontend in a separate terminal:
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Open http://localhost:4200/ in your browser; it redirects to `/task/list`.
+The frontend calls the backend at http://localhost:8081/task.
+
+## Debugging in VS Code
+
+Open the **repository root** (`task-management`) in VS Code so that it loads
+the root `.vscode/launch.json`. Install the recommended **Extension Pack for
+Java** and **Angular Language Service** if needed. Browser debugging is built
+into VS Code; the frontend configuration uses Google Chrome.
+
+1. Keep the database running (`docker compose up -d --wait` from the root).
+2. Stop the backend started with Maven using Ctrl+C in its terminal, freeing
+   port 8081. Open `TaskManagementApplication.java` and let VS Code finish
+   importing the Maven project. This project requires Java 17 or newer.
+3. Open **Run and Debug** (Ctrl+Shift+D), select **Backend: Spring Boot (local)**,
+   and press F5. VS Code builds and launches the Java application with the
+   `local` profile. Wait for the backend startup message.
+4. Keep `npm start` running in the frontend terminal. Select
+   **Frontend: Chrome (running dev server)** in Run and Debug and press F5.
+   Use the Chrome window it opens; both debug sessions can run together.
+
+To trace a request, click the gutter beside `this.taskService.getAll().subscribe(...)`
+in `frontend/src/app/task/list/list.component.ts` to set a breakpoint. Set another
+beside `Iterable<TaskDto> tasks = service.getAllTasks();` in
+`backend/src/main/java/com/ftinoco/task/management/controllers/TaskController.java`.
+Reload the debugger's Chrome window. Execution pauses in the frontend first.
+Press F5 to continue and send the HTTP request; execution then pauses in Java.
+Continue again to let the response reach the browser. A paused backend leaves
+the browser request pending until you resume it.
+
+While paused, inspect **Variables**, hover over expressions, or add them to
+**Watch**. F10 steps over a statement, F11 steps into a call, Shift+F11 steps
+out, and F5 continues. Shift+F5 stops the selected debug session. Stopping the
+frontend browser debug session leaves the separately started `npm start`
+process running.
+
+The frontend's development configuration already enables source maps, which
+let VS Code map the browser's JavaScript back to your TypeScript files. A hollow
+breakpoint may be unbound until its source loads; check that the frontend is
+running and you are using the browser window opened by the debugger.
+
 | ![List of task](./docs/ListOfTasks.png) |
 |:--:| 
 | *List of task* | 
