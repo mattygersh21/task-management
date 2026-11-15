@@ -1,4 +1,4 @@
--- Schema from the repository README. Applied on first database initialization.
+-- Initial task schema, managed by Flyway.
 CREATE TABLE public.task (
     id int4 NOT NULL,
     title varchar(64) NOT NULL,

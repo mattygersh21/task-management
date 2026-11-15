@@ -7,7 +7,8 @@ Read, Update, Delete) for tasks. Tasks will include a title, description, due da
 **Tech Stack**:
 - **Backend**: Java Spring Boot
 - **Frontend**: Angular
-- **Database**: PostgreSQL/MySQL
+- **Database**: PostgreSQL
+- **Database migrations**: Flyway
 - **API Testing**: Postman or equivalent
 
 ## Database
@@ -25,9 +26,9 @@ Connect at `127.0.0.1:5434`, database `postgres`, user `postgres`, password
 job-search database on host port 5432. PostgreSQL uses the official
 `postgres:17-alpine` image; no host PostgreSQL installation is required.
 
-The first startup creates the table and sequence shown below using
-`docker/postgres/001-schema.sql`. Data persists in the `ftinoco-task_postgres-data`
-Docker volume. Initialization SQL runs only when that volume is empty.
+PostgreSQL data persists in the `ftinoco-task_postgres-data` Docker volume.
+Compose starts the database; the backend runs Flyway migrations when it starts.
+A new database receives its application schema at that point.
 
 To run the backend on the host against this container:
 
@@ -40,29 +41,43 @@ The `local` profile changes only the database connection URL. The original
 default configuration remains available. Stop the database from the repository
 root with `docker compose down`; this preserves its data volume.
 
-The database was create on PostgreSQL, here is the required DDL:
+### Flyway migrations
 
-``` SQL
-CREATE TABLE public.task (
-	id int4 NOT NULL,
-	title varchar(64) NOT NULL,
-	description varchar(256) NULL,
-	due_date date NOT NULL,
-	status varchar(16) NOT NULL,
-	CONSTRAINT task_check CHECK (((status)::text = ANY ((ARRAY['PENDING'::character varying, 'COMPLETED'::character varying])::text[]))),
-	CONSTRAINT task_pk PRIMARY KEY (id)
-);
+Spring Boot uses Flyway with the configured application datasource and runs
+pending migrations before JPA starts. Maven dependency versions are managed by
+Spring Boot. Hibernate schema generation is disabled so Flyway owns schema changes.
+
+Migration scripts live in
+[`backend/src/main/resources/db/migration`](./backend/src/main/resources/db/migration).
+`V1__create_task_schema.sql` creates the original task table and ID sequence.
+To change the database, add a new script such as `V2__add_task_priority.sql`,
+then start or restart the backend using the command above. Use increasing,
+unique versions and two underscores between the version and description.
+Flyway records applied versions and checksums in `public.flyway_schema_history`;
+applied migrations should never be edited. Make corrections in a new migration.
+A migration failure prevents backend startup.
+
+#### Existing databases created before Flyway
+
+The previous Docker initialization script and manual README DDL created the same
+schema as V1. For a database with that schema and no Flyway history, first back up
+the database and verify that `public.task` and `public.seq_task_id` match V1.
+Then run this **once** from `backend`:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local \
+  -Dspring-boot.run.arguments="--spring.flyway.baseline-on-migrate=true --spring.flyway.baseline-version=1"
 ```
 
-``` SQL
-CREATE SEQUENCE public.seq_task_id
-	INCREMENT BY 1
-	MINVALUE 1
-	MAXVALUE 9223372036854775807
-	START 1
-	CACHE 1
-	NO CYCLE;
-```
+This records version 1 as the existing starting point without rerunning V1 or
+changing existing tasks. Afterward, stop the backend and use the normal startup
+command. For a database outside the local Docker container, select the appropriate
+profile/datasource instead. Do not baseline a schema that differs from V1: reconcile
+it first. Automatic baselining is disabled by default so an unexpected nonempty
+database fails startup rather than silently skipping the initial migration.
+
+Removing the old initialization mount from Compose does not change existing
+volumes. No volume reset is required to adopt Flyway.
 
 
 ## API
