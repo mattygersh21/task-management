@@ -20,10 +20,10 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('task-management');
   });
 
-  it('should render title', () => {
+  it('should render the routed content outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, task-management');
+    expect(compiled.querySelector('.wrapper router-outlet')).not.toBeNull();
   });
 });

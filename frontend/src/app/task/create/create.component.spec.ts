@@ -1,3 +1,6 @@
+import { TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { of, Subject, throwError } from 'rxjs';
 import { MatDialogRef } from '@angular/material/dialog';
 import { CreateComponent } from './create.component';
@@ -73,8 +76,10 @@ describe('Task draft restoration', () => {
     component = new CreateComponent(dialog, tasks, taskDraftService, 7);
     component.ngOnInit();
     component.taskForm.controls.title.setValue('Edited');
+    const errorLog = spyOn(console, 'error');
     tasks.update.and.returnValue(throwError(() => new Error('Network unavailable')));
     component.onSaveClick();
+    expect(errorLog).toHaveBeenCalledWith(jasmine.any(Error));
     expect(taskDraftService.read()?.title).toBe('Edited');
     expect(dialog.close).not.toHaveBeenCalled();
     tasks.update.and.returnValue(of({ id: 7 }));
@@ -103,5 +108,77 @@ describe('Task draft restoration', () => {
     component.ngOnInit();
     expect(() => component.taskForm.controls.title.setValue('Still editable')).not.toThrow();
     expect(() => component.onCancelClick()).not.toThrow();
+  });
+});
+
+
+describe('CreateComponent title validation', () => {
+  let taskDraftService: jasmine.SpyObj<TaskDraftService>;
+  let tasks: jasmine.SpyObj<TaskService>;
+
+  beforeEach(async () => {
+    taskDraftService = jasmine.createSpyObj('TaskDraftService', ['read', 'write', 'clear']);
+    taskDraftService.read.and.returnValue(null);
+    tasks = jasmine.createSpyObj('TaskService', ['find', 'create', 'update']);
+    await TestBed.configureTestingModule({
+      imports: [CreateComponent],
+      providers: [
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: null },
+        { provide: MatDialogRef, useValue: { close: jasmine.createSpy('close') } },
+        { provide: TaskService, useValue: tasks },
+        { provide: TaskDraftService, useValue: taskDraftService }
+      ]
+    }).compileComponents();
+  });
+
+  it('rejects spaces, tabs, newlines, and Unicode whitespace while allowing meaningful titles', () => {
+    const fixture = TestBed.createComponent(CreateComponent);
+    fixture.detectChanges();
+    const title = fixture.componentInstance.taskForm.controls.title;
+    for (const value of [' ', '   ', '\t', '\n', '\u00a0', ' \t\n ']) {
+      title.setValue(value);
+      expect(title.hasError('pattern')).withContext(JSON.stringify(value)).toBeTrue();
+    }
+    for (const value of ['Task', '  Task  ', 'Task title', '1', '!']) {
+      title.setValue(value);
+      expect(title.valid).withContext(value).toBeTrue();
+    }
+    title.setValue('');
+    expect(title.hasError('required')).toBeTrue();
+    title.setValue(null);
+    expect(title.hasError('required')).toBeTrue();
+  });
+
+  it('shows an informative error after blur, blocks Save, and clears the error when corrected', () => {
+    const fixture = TestBed.createComponent(CreateComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.taskForm.patchValue({ dueDate: new Date(2026, 11, 20), status: 'PENDING' });
+    const element: HTMLElement = fixture.nativeElement;
+    const input = element.querySelector<HTMLInputElement>('input[formControlName="title"]')!;
+    input.dispatchEvent(new Event('focus'));
+    input.value = '   ';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(component.taskForm.controls.title.touched).toBeFalse();
+    expect(element.textContent).not.toContain('Title cannot contain only whitespace');
+
+    input.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(component.taskForm.controls.title.touched).toBeTrue();
+    expect(element.textContent).toContain('Title cannot contain only whitespace. Enter at least one non-whitespace character.');
+    expect(element.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBeTrue();
+    component.onSaveClick();
+    expect(tasks.create).not.toHaveBeenCalled();
+    expect(tasks.update).not.toHaveBeenCalled();
+    // Drafts continue to retain input immediately, even before blur or successful validation.
+    expect(taskDraftService.write).toHaveBeenCalledWith(jasmine.objectContaining({ title: '   ' }));
+
+    input.value = '  Valid task  ';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(element.textContent).not.toContain('Title cannot contain only whitespace');
+    expect(element.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBeFalse();
   });
 });
