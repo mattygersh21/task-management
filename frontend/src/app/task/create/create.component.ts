@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
@@ -23,7 +23,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { TaskService } from '../task.service';
 import { Task } from '../task';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
+import { TaskDraftService } from '../task-draft.service';
 
 @Component({
   selector: 'app-create',
@@ -47,7 +48,10 @@ import { Observable } from 'rxjs';
   styleUrl: './create.component.scss',
   providers: [provideNativeDateAdapter()],
 })
-export class CreateComponent {
+export class CreateComponent implements OnInit, OnDestroy {
+
+  private draftSubscription?: Subscription;
+  private detailSubscription?: Subscription;
 
   taskId: number = 0;
   globalError: string = '';
@@ -65,28 +69,63 @@ export class CreateComponent {
   constructor(
     public dialogRef: MatDialogRef<CreateComponent>,
     public taskService: TaskService,
+    private taskDraftService: TaskDraftService,
     @Inject(MAT_DIALOG_DATA)
-    public data: number
-  ) {
-    if (data) {
-      this.taskId = data;
-      this.getTaskDetail();
-      this.dialogTitle = `Edit task - Id: ${data}`
+    public data: number | null
+  ) { }
+
+  ngOnInit(): void {
+    if (this.data) {
+      this.taskId = this.data;
+      this.dialogTitle = `Edit task - Id: ${this.data}`
     }
+    const draft = this.taskDraftService.read();
+    if (draft && draft.taskId === this.taskId) {
+      this.taskForm.setValue({
+        title: draft.title,
+        description: draft.description,
+        dueDate: draft.dueDate ? new Date(draft.dueDate) : null,
+        status: draft.status
+      });
+    } else if (this.taskId) {
+      this.getTaskDetail();
+    } else {
+      this.persistDraft();
+    }
+    this.draftSubscription = this.taskForm.valueChanges.subscribe(() => this.persistDraft());
+  }
+
+  private persistDraft(): void {
+    const value = this.taskForm.getRawValue();
+    const date = value.dueDate ? new Date(value.dueDate) : null;
+    this.taskDraftService.write({
+      ...value,
+      taskId: this.taskId,
+      dueDate: date && Number.isFinite(date.getTime()) ? date.toISOString() : null
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.draftSubscription?.unsubscribe();
+    this.detailSubscription?.unsubscribe();
   }
 
   onCancelClick(): void {
+    this.taskDraftService.clear();
     this.dialogRef.close(false);
   }
 
   getTaskDetail(): void {
-    this.taskService.find(this.taskId).subscribe((data: Task) => {
+    this.detailSubscription = this.taskService.find(this.taskId).subscribe((data: Task) => {
+      // A slow response must not overwrite edits made while it was loading.
+      if (this.taskForm.dirty) return;
       this.taskForm.setValue({
         description: data.description,
-        dueDate: data.dueDate,
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
         status: data.status,
         title: data.title
-      });
+      }, { emitEvent: false });
+      this.persistDraft();
     });
   }
 
@@ -107,6 +146,7 @@ export class CreateComponent {
     result.subscribe({
       next: (res: any) => {
         if (res.id) {
+          this.taskDraftService.clear();
           this.dialogRef.close(true);
         } else {
           console.error('Something went wrong!');
