@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { TaskDraftService } from '../task-draft.service';
 import { Task } from '../task';
 import { TaskService } from '../task.service';
 import { MatTableModule } from '@angular/material/table';
@@ -39,11 +40,14 @@ export class ListComponent {
 
   constructor(
     public taskService: TaskService,
+    private taskDraftService: TaskDraftService,
     private dialog: MatDialog
   ) { }
 
   ngOnInit(): void {
     this.loadTable();
+    const draft = this.taskDraftService.read();
+    if (draft) this.showForm(draft.taskId || null);
   }
 
   loadTable(): void {
