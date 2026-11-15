@@ -9,6 +9,7 @@
                   <mat-label>Title</mat-label>
                   <input matInput formControlName="title" name="title">
                   <mat-error *ngIf="taskForm.get('title')?.getError('required')">This field is required</mat-error>
+                  <mat-error *ngIf="taskForm.get('title')?.touched && taskForm.get('title')?.hasError('pattern')">Title cannot contain only whitespace. Enter at least one non-whitespace character.</mat-error>
                 </mat-form-field>
               </div>
               <div fxFlex="100%">

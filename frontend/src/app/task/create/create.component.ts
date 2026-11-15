@@ -60,7 +60,7 @@ export class CreateComponent implements OnInit, OnDestroy {
   statuses: string[] = ['PENDING', 'COMPLETED'];
 
   taskForm = new FormGroup({
-    title: new FormControl('', [Validators.required]),
+    title: new FormControl('', [Validators.required, Validators.pattern(/\S/)]),
     description: new FormControl('', [Validators.maxLength(this.descCharLength)]),
     dueDate: new FormControl<Date | null>(null, [Validators.required]),
     status: new FormControl('', [Validators.required])
