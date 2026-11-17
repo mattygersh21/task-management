@@ -26,7 +26,7 @@ export class ConfirmDialogComponent {
   constructor(
     public dialogRef: MatDialogRef<ConfirmDialogComponent>,
     @Inject(MAT_DIALOG_DATA) 
-    public data: { message: string }
+    public data: { message: string; confirmLabel?: string }
   ) { }
 
   onNoClick(): void {

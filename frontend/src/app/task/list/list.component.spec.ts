@@ -19,3 +19,24 @@ describe('ListComponent draft reopening', () => {
       { width: '600px', disableClose: true, data: 7 });
   });
 });
+
+
+describe('Parent deletion confirmation', () => {
+  it('explicitly warns about all subtasks and deletes only after confirmation', () => {
+    const tasks = jasmine.createSpyObj<TaskService>('TaskService', ['delete']);
+    tasks.delete.and.returnValue(of(null));
+    const drafts = jasmine.createSpyObj<TaskDraftService>('TaskDraftService', ['clearFamily']);
+    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    dialog.open.and.returnValue({ afterClosed: () => of(false) } as any);
+    const component = new ListComponent(tasks, drafts, dialog);
+    component.deleteTask(12);
+    expect(dialog.open).toHaveBeenCalledWith(jasmine.anything(), jasmine.objectContaining({
+      data: jasmine.objectContaining({ message: jasmine.stringContaining('all its subtasks') })
+    }));
+    expect(tasks.delete).not.toHaveBeenCalled();
+    dialog.open.and.returnValue({ afterClosed: () => of(true) } as any);
+    component.deleteTask(12);
+    expect(tasks.delete).toHaveBeenCalledWith(12);
+    expect(drafts.clearFamily).toHaveBeenCalledWith(12);
+  });
+});

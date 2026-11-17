@@ -1,13 +1,17 @@
 <form [formGroup]="taskForm" (ngSubmit)="onSaveClick()">
     <h1 mat-dialog-title>{{dialogTitle}}</h1>
     <div mat-dialog-content>   
-        <mat-error *ngIf="globalError">{{globalError}}</mat-error>
+        <mat-error role="alert" *ngIf="globalError">{{globalError}}</mat-error>
+        <p *ngIf="notice" role="status">{{notice}}</p>
+        <p *ngIf="loading" role="status">Loading task details…</p>
+        <p *ngIf="parentTask">Parent: <strong>{{parentTask.title}}</strong> · Due {{parentTask.dueDate | date:'mediumDate':'UTC'}}</p>
         <br />
         <div fxLayout="column" fxLayoutAlign="center center">
             <div fxFlex="100%">
                 <mat-form-field class="form-field">
                   <mat-label>Title</mat-label>
-                  <input matInput formControlName="title" name="title">
+                  <input matInput formControlName="title" name="title" maxlength="64">
+                  <mat-error *ngIf="taskForm.get('title')?.hasError('maxlength')">Title must be at most 64 characters.</mat-error>
                   <mat-error *ngIf="taskForm.get('title')?.getError('required')">This field is required</mat-error>
                   <mat-error *ngIf="taskForm.get('title')?.touched && taskForm.get('title')?.hasError('pattern')">Title cannot contain only whitespace. Enter at least one non-whitespace character.</mat-error>
                 </mat-form-field>
@@ -23,9 +27,11 @@
               <div fxFlex="100%">
                 <mat-form-field class="form-field">
                   <mat-label>Due Date</mat-label>
-                  <input matInput [matDatepicker]="datepicker" formControlName="dueDate" name="dueDate">
+                  <input matInput [matDatepicker]="datepicker" formControlName="dueDate" name="dueDate" [max]="maxDueDate">
+                  <mat-hint *ngIf="parentTask">Choose the parent due date or earlier.</mat-hint>
                   <mat-datepicker-toggle matIconSuffix [for]="datepicker"></mat-datepicker-toggle>
                   <mat-datepicker #datepicker></mat-datepicker>
+                  <mat-error *ngIf="taskForm.get('dueDate')?.hasError('matDatepickerMax')">Subtask due date cannot be after the parent due date.</mat-error>
                   <mat-error *ngIf="taskForm.get('dueDate')?.getError('required')">This field is required</mat-error>
                 </mat-form-field>
               </div>
@@ -41,9 +47,24 @@
                 </mat-form-field>
               </div>
         </div>
+        <section *ngIf="taskId && !parentId" class="subtasks" aria-label="Subtasks">
+          <div class="subtasks-heading"><h2>Subtasks ({{children.length}})</h2>
+            <button mat-button type="button" (click)="openSubtask()" [disabled]="!canManageSubtasks">+ Add subtask</button>
+          </div>
+          <p *ngIf="parentDateUnsaved">Save the parent due-date change before adding or editing subtasks.</p>
+          <p *ngIf="!children.length">No subtasks yet.</p>
+          <div *ngFor="let child of children" class="subtask-row">
+            <div><strong>{{child.title}}</strong><br><small>{{child.dueDate | date:'mediumDate':'UTC'}} · {{child.status}}</small></div>
+            <div>
+              <button mat-button type="button" (click)="openSubtask(child)" [disabled]="!canManageSubtasks" [attr.aria-label]="'Edit subtask ' + child.title">Edit</button>
+              <button mat-button type="button" color="warn" (click)="deleteSubtask(child)" [disabled]="loading || saving" [attr.aria-label]="'Delete subtask ' + child.title">Delete</button>
+            </div>
+          </div>
+          <p>Subtasks are saved separately from parent edits.</p>
+        </section>
     </div>
     <div mat-dialog-actions class="align-right">
-        <button mat-button type="button" (click)="onCancelClick()">Cancel</button>
-        <button mat-button color="primary" type="submit" [disabled]="!taskForm.valid">Save</button>
+        <button mat-button type="button" (click)="onCancelClick()" [disabled]="saving">{{changed ? 'Close' : 'Cancel'}}</button>
+        <button mat-button color="primary" type="submit" [disabled]="!canSave">Save</button>
     </div>
 </form>

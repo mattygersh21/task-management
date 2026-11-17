@@ -1,3 +1,4 @@
+import { Task } from './task';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, Observable, throwError } from 'rxjs'; 
@@ -30,6 +31,11 @@ export class TaskService {
       }).pipe(catchError(this.errorHandler));
   }
 
+  createSubtask(parentId: number, task: any): Observable<Task> {
+    return this.httpClient.post<Task>(`${this.apiURL}/task/${parentId}/subtasks`, task)
+      .pipe(catchError(this.errorHandler));
+  }
+
   update(task: any): Observable<any> {
     console.log(JSON.stringify(task));
     return this.httpClient.put(this.apiURL + '/task', JSON.stringify(task),
@@ -50,12 +56,6 @@ export class TaskService {
   }
 
   errorHandler(error: any) {
-    let errorMessage = '';
-    if (error.error instanceof ErrorEvent) {
-      errorMessage = error.error.message;
-    } else {
-      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
-    }
-    return throwError(errorMessage);
+    return throwError(() => error);
   }
 }

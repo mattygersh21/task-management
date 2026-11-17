@@ -1,6 +1,8 @@
 package com.ftinoco.task.management.entities;
 
 import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.*; 
  
@@ -17,12 +19,25 @@ public class Task {
 	
 	private String description;
 
+    @Temporal(TemporalType.DATE)
     @Column(name = "due_date")
 	private Date dueDate;
     
     @Enumerated(EnumType.STRING)
 	private Status status;
 	
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Task parent;
+
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
+    @OrderBy("id ASC")
+    private List<Task> children = new ArrayList<>();
+
+    public Task getParent() { return parent; }
+    public void setParent(Task parent) { this.parent = parent; }
+    public List<Task> getChildren() { return children; }
+
 	public int getId() {
 		return id;
 	}

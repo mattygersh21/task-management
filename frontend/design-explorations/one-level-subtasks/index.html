@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Subtasks — design exploration</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f5f9;color:#24263c;font:16px system-ui}main{max-width:960px;margin:36px auto;padding:24px}header,.row,footer{display:flex;align-items:center;justify-content:space-between;gap:16px}article,dialog{background:white;border:1px solid #dddfea;border-radius:14px;padding:28px}h1{margin:8px 0 24px}h2{font-size:20px}small,.muted{color:#666a7d}label{display:block;margin:16px 0}input,textarea,select{display:block;width:100%;padding:12px;margin-top:6px;border:1px solid #aeb1c3;border-radius:6px;font:inherit}button{padding:10px 16px;border:1px solid #d5d7e3;border-radius:6px;background:white;color:#343354;cursor:pointer;font:inherit}.primary{background:#5044bb;color:white;border:0}.danger{color:#a12237}.row{padding:16px 0;border-bottom:1px solid #eee}.badge{font-size:12px;background:#efedf9;border-radius:16px;padding:5px 10px}footer{margin-top:26px}dialog{width:min(540px,92vw)}dialog::backdrop{background:#22243b66}.hint{font-size:14px;color:#666a7d}.notice{border-left:3px solid #6557ce;padding:12px;background:#f4f2fd}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media(max-width:600px){.grid{grid-template-columns:1fr}.row,header{flex-wrap:wrap}}
+</style>
+<main>
+<header><span class="muted">Task Management / Edit task #12</span><span class="badge">Interactive design prototype · sample data</span></header>
+<h1>Edit task</h1>
+<article>
+<form id="parentForm">
+<label>Title<input value="Prepare release" required maxlength="64"></label>
+<label>Description<textarea>Coordinate the release checklist and final review.</textarea></label>
+<div class="grid"><label>Due date<input id="parentDate" type="date" value="2026-12-04" required></label><label>Status<select><option>PENDING</option><option>COMPLETED</option></select></label></div>
+<footer><span id="message" role="status" class="hint">Sample parent is already saved.</span><button class="primary">Save task changes</button></footer>
+</form>
+<hr style="border:0;border-top:1px solid #eee;margin-top:28px">
+<header><div><h2>Subtasks <span id="count" class="badge">2</span></h2><p class="hint">Manage subtasks for this saved task.</p></div><button id="add" type="button">+ Add subtask</button></header>
+<div id="children"></div>
+<footer><button id="deleteParent" class="danger" type="button">Delete task…</button><span class="hint">Subtasks are saved separately from parent edits.</span></footer>
+</article>
+<p class="hint">Other states: a new-task form has no subtask section. Editing a subtask uses the same fields with parent context and no “Add subtask” action.</p>
+</main>
+<dialog id="childDialog"><form id="childForm">
+<small id="parentContext"></small><h2 id="childTitle">New subtask</h2>
+<label>Title<input id="title" required maxlength="64" pattern=".*\S.*"></label>
+<label>Description<textarea id="description" maxlength="256"></textarea></label>
+<label>Due date<input id="childDate" type="date" required></label><p id="dateHint" class="hint"></p>
+<label>Status<select id="status"><option>PENDING</option><option>COMPLETED</option></select></label>
+<footer><button id="cancelChild" type="button">Cancel</button><button class="primary">Save subtask</button></footer>
+</form></dialog>
+<dialog id="deleteDialog"><h2 id="deleteHeading">Delete task and all subtasks?</h2><p id="deleteMessage"></p><p>This cannot be undone.</p><footer><button id="cancelDelete">Cancel</button><button id="confirmDelete" class="primary">Delete task and subtasks</button></footer></dialog>
+<script>
+const el=id=>document.getElementById(id);
+let parentDue='2026-12-04',editing=null,deletingChild=null;
+let children=[{title:'Verify deployment checklist',description:'',date:'2026-12-03',status:'PENDING'},{title:'Review release notes',description:'',date:'2026-12-04',status:'COMPLETED'}];
+function render(){el('children').replaceChildren();el('count').textContent=children.length;if(!children.length)el('children').textContent='No subtasks yet. Add one to break this task into smaller steps.';children.forEach((child,index)=>{const row=document.createElement('div');row.className='row';const name=document.createElement('span');name.textContent=child.title;const detail=document.createElement('small');detail.textContent=child.date+' · '+child.status;const edit=document.createElement('button');edit.textContent='Edit';edit.onclick=()=>openChild(index);const remove=document.createElement('button');remove.textContent='Delete…';remove.className='danger';remove.onclick=()=>{deletingChild=index;el('deleteHeading').textContent='Delete subtask?';el('deleteMessage').textContent='“'+child.title+'” will be permanently deleted. The parent and other subtasks will remain.';el('confirmDelete').textContent='Delete subtask';el('deleteDialog').showModal()};row.append(name,detail,edit,remove);el('children').append(row)})}
+function openChild(index=null){if(el('parentDate').value!==parentDue){el('message').textContent='Save the parent due-date change before adding or editing subtasks.';return}editing=index;const child=index===null?{title:'',description:'',date:parentDue,status:'PENDING'}:children[index];el('childTitle').textContent=index===null?'New subtask':'Edit subtask';el('parentContext').textContent='Parent: Prepare release · Due '+parentDue;el('title').value=child.title;el('description').value=child.description;el('childDate').value=child.date;el('childDate').max=parentDue;el('dateHint').textContent='Choose '+parentDue+' or earlier. Defaults to the parent due date.';el('status').value=child.status;el('childDialog').showModal()}
+el('add').onclick=()=>openChild();el('cancelChild').onclick=()=>el('childDialog').close();
+el('childForm').onsubmit=e=>{e.preventDefault();const child={title:el('title').value.trim(),description:el('description').value,date:el('childDate').value,status:el('status').value};if(!child.title)return;if(editing===null)children.push(child);else children[editing]=child;render();el('childDialog').close()};
+el('parentForm').onsubmit=e=>{e.preventDefault();const blocking=children.filter(c=>c.date>el('parentDate').value);if(blocking.length){el('message').textContent='Update the due date of '+blocking.map(c=>'“'+c.title+'” ('+c.date+')').join(', ')+' to '+el('parentDate').value+' or earlier before saving this parent due date.';return}parentDue=el('parentDate').value;el('message').textContent='Task changes saved in this prototype.'};
+el('deleteParent').onclick=()=>{deletingChild=null;el('deleteHeading').textContent='Delete task and all subtasks?';el('confirmDelete').textContent='Delete task and subtasks';el('deleteMessage').textContent='“Prepare release” and its '+children.length+' subtasks will be permanently deleted.';el('deleteDialog').showModal()};el('cancelDelete').onclick=()=>el('deleteDialog').close();el('confirmDelete').onclick=()=>{el('deleteDialog').close();if(deletingChild!==null){children.splice(deletingChild,1);deletingChild=null;render();el('message').textContent='Subtask deleted in this prototype.';return}document.querySelector('article').replaceChildren(Object.assign(document.createElement('p'),{textContent:'Task and subtasks deleted in this prototype. Reload to reset sample data.'}))};render();
+</script>
+</html>
