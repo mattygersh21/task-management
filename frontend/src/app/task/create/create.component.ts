@@ -175,7 +175,7 @@ export class CreateComponent implements OnInit, OnDestroy {
     if (!this.dialog || !this.canManageSubtasks) return;
     this.persistDraft();
     const ref = this.dialog.open(CreateComponent, { width: '600px', disableClose: true,
-      data: { taskId: child?.id, parentId: this.taskId } });
+      data: { taskId: child!.id, parentId: this.taskId } });
     this.subscriptions.add(ref.afterClosed().subscribe(saved => {
       if (saved) { this.changed = true; this.getTaskDetail(); }
       this.persistDraft();
