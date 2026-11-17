@@ -53,7 +53,7 @@ export class ListComponent {
 
   loadTable(): void {
     this.taskService.getAll().subscribe({
-      next: (data: Task[]) => { this.tasks = data; },
+      next: (data: Task[]) => { this.tasks = data.filter(task => task.status === 'PENDING'); },
       error: err => { this.globalError = err?.error?.message || 'Unable to load tasks. Please try again.'; }
     });
   }
