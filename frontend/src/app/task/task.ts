@@ -1,7 +1,14 @@
 export interface Task {
-    id: number;
-    title: string;
-    description: string;
-    dueDate: Date;
-    status: string;
+  id: number;
+  title: string;
+  description: string | null;
+  dueDate: string;
+  status: string;
+  parentId?: number | null;
+  subtasks?: Task[];
+}
+
+export interface TaskFormContext {
+  taskId?: number;
+  parentId?: number;
 }

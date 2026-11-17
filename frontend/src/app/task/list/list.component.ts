@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { TaskDraftService } from '../task-draft.service';
-import { Task } from '../task';
+import { Task, TaskFormContext } from '../task';
 import { TaskService } from '../task.service';
 import { MatTableModule } from '@angular/material/table';
 import { MatButton } from '@angular/material/button';
@@ -36,6 +36,7 @@ import { CreateComponent } from '../create/create.component';
 export class ListComponent {
 
   tasks: Task[] = [];
+  globalError = '';
   displayedColumns: string[] = ['id', 'title', 'description', 'dueDate', 'status', 'actions'];
 
   constructor(
@@ -47,14 +48,14 @@ export class ListComponent {
   ngOnInit(): void {
     this.loadTable();
     const draft = this.taskDraftService.read();
-    if (draft) this.showForm(draft.taskId || null);
+    if (draft) this.showForm(draft.parentId ? { taskId: draft.taskId, parentId: draft.parentId } : draft.taskId || null);
   }
 
   loadTable(): void {
-    this.taskService.getAll().subscribe((data: Task[]) => {
-      this.tasks = data;
-      console.log(data);
-    })
+    this.taskService.getAll().subscribe({
+      next: (data: Task[]) => { this.tasks = data; },
+      error: err => { this.globalError = err?.error?.message || 'Unable to load tasks. Please try again.'; }
+    });
   }
 
   addTask(): void {
@@ -65,7 +66,7 @@ export class ListComponent {
     this.showForm(id);
   }
 
-  showForm(id: number | null) : void {
+  showForm(id: number | TaskFormContext | null) : void {
     const dialogRef = this.dialog.open(CreateComponent, {
       width: '600px',
       disableClose: true,
@@ -80,20 +81,16 @@ export class ListComponent {
 
   deleteTask(id: number): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      width: '300px',
-      data: { message: 'Are you sure you want to delete this task?' }
+      width: '420px',
+      data: { message: 'Delete this task and all its subtasks? This cannot be undone.', confirmLabel: 'Delete task and subtasks' }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        console.log('User confirmed the action!');
-        // Perform the action here
-        this.taskService.delete(id).subscribe(res => {
+        this.taskService.delete(id).subscribe({ next: res => {
           this.tasks = this.tasks.filter(item => item.id !== id);
-          console.log('Task deleted successfully!');
-        })
-      } else {
-        console.log('User canceled the action.');
+          this.taskDraftService.clearFamily(id);
+        }, error: err => { this.globalError = err?.error?.message || 'Unable to delete task. Please try again.'; } });
       }
     });
   }

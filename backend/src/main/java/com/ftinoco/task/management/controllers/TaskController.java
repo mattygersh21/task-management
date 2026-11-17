@@ -1,95 +1,33 @@
 package com.ftinoco.task.management.controllers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
-
+import java.util.List;
 import com.ftinoco.task.management.dtos.TaskDto;
+import com.ftinoco.task.management.dtos.TaskInput;
 import com.ftinoco.task.management.services.TaskService;
-
-import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class TaskController {
-
-	@Autowired
-	private TaskService service;
-
-	Logger logger = LoggerFactory.getLogger(TaskController.class);
-
-	@GetMapping("/task/{id}")
-	private ResponseEntity<TaskDto> getTask(@PathVariable int id) {
-		try {
-			TaskDto dto = service.getTaskById(id);
-			return ResponseEntity.status(HttpStatus.OK).body(dto);
-		} catch (Exception e) {
-			logger.error("Something went wrong!", e);
-			if (e instanceof EntityNotFoundException) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-			} else {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-			}
-		}
-	}
-
-	@GetMapping("/task")
-	private ResponseEntity<Iterable<TaskDto>> getTask() {
-		try {
-			Iterable<TaskDto> tasks = service.getAllTasks();
-			return ResponseEntity.status(HttpStatus.OK).body(tasks);
-		} catch (Exception e) {
-			logger.error("Something went wrong!", e);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-		}
-	}
-
-	@PostMapping("/task")
-	private ResponseEntity<TaskDto> createTask(@RequestBody TaskDto dto) {
-		try {
-			var task = service.addTask(dto);
-			return ResponseEntity.status(HttpStatus.OK).body(task);
-		} catch (Exception e) {
-			logger.error("Something went wrong!", e);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-		}
-	}
-
-	@PutMapping("/task")
-	private ResponseEntity<TaskDto> updateTask(@RequestBody TaskDto dto) {
-		try {
-			var task = service.updateTask(dto);
-			return ResponseEntity.status(HttpStatus.OK).body(task);
-		} catch (Exception e) {
-			logger.error("Something went wrong!", e);
-			if (e instanceof EntityNotFoundException) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-			} else {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-			}
-		}
-	}
-
-	@DeleteMapping("/task/{id}")
-	public ResponseEntity<Void> deleteTask(@PathVariable int id) {
-		try {
-			service.deleteTask(id);
-			return ResponseEntity.noContent().build();
-		} catch (Exception e) {
-			logger.error("Something went wrong!", e);
-			if (e instanceof EntityNotFoundException) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-			} else {
-				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-			}
-		}
-	}
+    private final TaskService service;
+    public TaskController(TaskService service) { this.service = service; }
+    @GetMapping("/task/{id}")
+    public TaskDto getTask(@PathVariable int id) { return service.getTaskById(id); }
+    @GetMapping("/task")
+    public List<TaskDto> getTasks() { return service.getAllTasks(); }
+    @PostMapping("/task")
+    public TaskDto createTask(@Valid @RequestBody TaskInput input) { return service.addTask(input); }
+    @PostMapping("/task/{parentId}/subtasks")
+    public ResponseEntity<TaskDto> createSubtask(@PathVariable int parentId, @Valid @RequestBody TaskInput input) {
+        TaskDto child = service.addSubtask(parentId, input);
+        return ResponseEntity.created(java.net.URI.create("/task/" + child.id())).body(child);
+    }
+    @PutMapping("/task")
+    public TaskDto updateTask(@Valid @RequestBody TaskInput input) { return service.updateTask(input); }
+    @DeleteMapping("/task/{id}")
+    public ResponseEntity<Void> deleteTask(@PathVariable int id) {
+        service.deleteTask(id);
+        return ResponseEntity.noContent().build();
+    }
 }

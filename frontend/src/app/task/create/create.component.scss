@@ -1,0 +1,6 @@
+.subtasks { border-top: 1px solid #ddd; margin-top: 24px; padding-top: 12px; }
+.subtasks-heading, .subtask-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.subtask-row { border-bottom: 1px solid #eee; padding: 12px 0; }
+.subtask-row strong { overflow-wrap: anywhere; }
+.subtask-row > div:last-child { flex-shrink: 0; }
+@media (max-width: 480px) { .subtask-row { flex-wrap: wrap; } }
